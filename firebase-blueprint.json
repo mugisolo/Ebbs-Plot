@@ -1,0 +1,220 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with attendee/organiser role and wallet balance",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "User unique identifier matching auth UID",
+          "maxLength": 128
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Full display name",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address",
+          "maxLength": 150
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Profile picture URL",
+          "maxLength": 500
+        },
+        "role": {
+          "type": "string",
+          "description": "User role: attendee or organiser",
+          "enum": ["attendee", "organiser"]
+        },
+        "walletBalance": {
+          "type": "number",
+          "description": "Kesho wallet balance in UGX"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of account creation",
+          "maxLength": 50
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update",
+          "maxLength": 50
+        }
+      },
+      "required": ["id", "displayName", "email", "role", "walletBalance", "createdAt"]
+    },
+    "Ticket": {
+      "title": "Ticket",
+      "description": "Purchased event ticket pass with gate scanner QR code",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ticket ID",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID",
+          "maxLength": 128
+        },
+        "eventId": {
+          "type": "string",
+          "description": "Referenced event ID",
+          "maxLength": 128
+        },
+        "eventTitle": {
+          "type": "string",
+          "description": "Event title",
+          "maxLength": 200
+        },
+        "venueName": {
+          "type": "string",
+          "description": "Venue name in Entebbe",
+          "maxLength": 150
+        },
+        "eventDate": {
+          "type": "string",
+          "description": "Date & time of event",
+          "maxLength": 100
+        },
+        "ticketType": {
+          "type": "string",
+          "description": "Early Bird, Regular, or VIP",
+          "maxLength": 50
+        },
+        "priceUGX": {
+          "type": "number",
+          "description": "Price paid in UGX"
+        },
+        "qrCode": {
+          "type": "string",
+          "description": "Digital gate scanner token string",
+          "maxLength": 200
+        },
+        "status": {
+          "type": "string",
+          "description": "Ticket status",
+          "enum": ["valid", "used", "cancelled"]
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Purchase timestamp",
+          "maxLength": 50
+        }
+      },
+      "required": ["id", "userId", "eventId", "eventTitle", "venueName", "priceUGX", "status", "createdAt"]
+    },
+    "SavedEvent": {
+      "title": "SavedEvent",
+      "description": "Bookmarked event for quick access",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique saved record ID",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID",
+          "maxLength": 128
+        },
+        "eventId": {
+          "type": "string",
+          "description": "Saved event ID",
+          "maxLength": 128
+        },
+        "eventTitle": {
+          "type": "string",
+          "description": "Event title",
+          "maxLength": 200
+        },
+        "venueName": {
+          "type": "string",
+          "description": "Venue name",
+          "maxLength": 150
+        },
+        "priceUGX": {
+          "type": "number",
+          "description": "Price in UGX"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp bookmarked",
+          "maxLength": 50
+        }
+      },
+      "required": ["id", "userId", "eventId", "eventTitle", "createdAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Kesho wallet ledger entry (Top-up, Purchase, Withdrawal)",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Transaction identifier",
+          "maxLength": 128
+        },
+        "userId": {
+          "type": "string",
+          "description": "User UID",
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "description": "Transaction type",
+          "enum": ["topup", "purchase", "withdrawal", "cashback"]
+        },
+        "amountUGX": {
+          "type": "number",
+          "description": "Amount in UGX"
+        },
+        "method": {
+          "type": "string",
+          "description": "Payment method e.g. MTN MoMo, Airtel Money, Card",
+          "maxLength": 80
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of transaction",
+          "enum": ["completed", "pending", "failed"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Transaction narrative",
+          "maxLength": 250
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp",
+          "maxLength": 50
+        }
+      },
+      "required": ["id", "userId", "type", "amountUGX", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profile document containing attendee and organizer settings"
+    },
+    "/tickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/Ticket" },
+      "description": "Purchased event tickets and gate passes"
+    },
+    "/savedEvents/{savedId}": {
+      "schema": { "$ref": "#/entities/SavedEvent" },
+      "description": "Bookmarked events for attendee's watchlist"
+    },
+    "/transactions/{txId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "User wallet transaction ledger"
+    }
+  }
+}

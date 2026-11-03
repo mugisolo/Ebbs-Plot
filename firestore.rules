@@ -1,0 +1,98 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net - Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // User Profile Rules
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.displayName is string && data.displayName.size() <= 100 &&
+             data.email is string && data.email.size() <= 150 &&
+             data.role in ['attendee', 'organiser'] &&
+             data.walletBalance is number && data.walletBalance >= 0 &&
+             data.id == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming()) && incoming().id == userId;
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUser(incoming()) && incoming().id == userId;
+      allow delete: if false;
+    }
+
+    // Tickets Collection Rules
+    function isValidTicket(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.eventId is string && data.eventId.size() <= 128 &&
+             data.eventTitle is string && data.eventTitle.size() <= 200 &&
+             data.venueName is string && data.venueName.size() <= 150 &&
+             data.priceUGX is number && data.priceUGX >= 0 &&
+             data.status in ['valid', 'used', 'cancelled'];
+    }
+
+    match /tickets/{ticketId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(ticketId) && isValidTicket(incoming()) && incoming().id == ticketId;
+      allow update: if isSignedIn() && isValidId(ticketId) && incoming().userId == existing().userId &&
+                   incoming().userId == request.auth.uid &&
+                   incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if false;
+    }
+
+    // Saved Events Collection Rules
+    function isValidSavedEvent(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.eventId is string && data.eventId.size() <= 128 &&
+             data.eventTitle is string && data.eventTitle.size() <= 200;
+    }
+
+    match /savedEvents/{savedId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(savedId) && isValidSavedEvent(incoming()) && incoming().id == savedId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Transactions Ledger Rules
+    function isValidTransaction(data) {
+      return data.id is string && data.id.size() <= 128 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.type in ['topup', 'purchase', 'withdrawal', 'cashback'] &&
+             data.amountUGX is number && data.amountUGX > 0 &&
+             data.status in ['completed', 'pending', 'failed'];
+    }
+
+    match /transactions/{txId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(txId) && isValidTransaction(incoming()) && incoming().id == txId;
+      allow update, delete: if false; // Immutable ledger
+    }
+  }
+}
