@@ -2,6 +2,7 @@
   "name": "Entebbe  Events \u0026 Nightlife",
   "description": "Discover and ticket lakeside nightlife, live jazz, beach raves, quiz nights, and verified local event services across Entebbe with Kesho.",
   "requestFramePermissions": [
+    "camera",
     "geolocation"
   ],
   "majorCapabilities": [

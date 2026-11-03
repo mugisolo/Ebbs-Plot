@@ -8,9 +8,11 @@ export const apiRouter = express.Router();
 apiRouter.use(express.json());
 
 const getAiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY || '';
+  if (!process.env.API_KEY && process.env.GEMINI_API_KEY) {
+    process.env.API_KEY = process.env.GEMINI_API_KEY;
+  }
   return new GoogleGenAI({
-    apiKey,
+    apiKey: process.env.API_KEY,
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',

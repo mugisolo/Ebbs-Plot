@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getAuth,
   signInWithPopup,
@@ -8,12 +8,32 @@ import {
   signOut,
 } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
+import appletConfig from '../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
+// Read Firebase configuration from VITE_FIREBASE_* environment variables first,
+// falling back to the provisioned firebase-applet-config.json when running in AI Studio preview.
+const env = (import.meta as any).env || {};
 
-// Initialize Firestore with specific database ID from config
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+export const firebaseConfig = {
+  apiKey: env.VITE_FIREBASE_API_KEY || appletConfig.apiKey,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || appletConfig.authDomain,
+  projectId: env.VITE_FIREBASE_PROJECT_ID || appletConfig.projectId,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || appletConfig.storageBucket,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || appletConfig.messagingSenderId,
+  appId: env.VITE_FIREBASE_APP_ID || appletConfig.appId,
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || appletConfig.measurementId || '',
+  firestoreDatabaseId:
+    env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || (appletConfig as any).firestoreDatabaseId,
+  oAuthClientId: env.VITE_FIREBASE_OAUTH_CLIENT_ID || (appletConfig as any).oAuthClientId || '',
+};
+
+// Initialize Firebase App, Firestore, and Auth as singletons (exactly once)
+export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+export const db = firebaseConfig.firestoreDatabaseId
+  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+  : getFirestore(app);
+
 export const auth = getAuth(app);
 
 // Configure Google Auth Provider with Google Tasks scope
@@ -43,6 +63,7 @@ export const initAuth = (
 };
 
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+  if (isSigningIn) return null;
   try {
     isSigningIn = true;
     const result = await signInWithPopup(auth, provider);
@@ -88,6 +109,11 @@ export interface FirestoreErrorInfo {
     email?: string | null;
     emailVerified?: boolean | null;
     isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
   };
 }
 
@@ -103,6 +129,12 @@ export function handleFirestoreError(
       email: auth.currentUser?.email,
       emailVerified: auth.currentUser?.emailVerified,
       isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo:
+        auth.currentUser?.providerData?.map((p) => ({
+          providerId: p.providerId,
+          email: p.email,
+        })) || [],
     },
     operationType,
     path,
